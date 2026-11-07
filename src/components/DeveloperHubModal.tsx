@@ -52,13 +52,13 @@ export const DeveloperHubModal: React.FC<DeveloperHubModalProps> = ({
               <Cpu className="w-4 h-4 text-stone-900" />
             </div>
             <div>
-              <div className="text-sm font-bold text-stone-900 flex items-center gap-2">
+              <div className="text-base sm:text-lg font-bold text-stone-900 font-heading flex items-center gap-2">
                 <span>Developer & Technical Systems Hub</span>
-                <span className="text-[10px] font-mono uppercase bg-[#F2EDE4] text-stone-700 px-1.5 py-0.5 rounded border border-[#E5DFD5]">
+                <span className="text-xs font-mono uppercase bg-[#F2EDE4] text-stone-700 px-2 py-0.5 rounded border border-[#E5DFD5]">
                   Python · PyTorch · Docker
                 </span>
               </div>
-              <div className="text-xs text-stone-500">
+              <div className="text-xs sm:text-sm text-stone-600">
                 Inspect MS-CNN neural architecture, IBM Food-101 benchmarks, or view all GitHub repo files and Docker deployment scripts.
               </div>
             </div>

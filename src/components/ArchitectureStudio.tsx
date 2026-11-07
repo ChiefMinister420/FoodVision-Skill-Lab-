@@ -22,13 +22,13 @@ export const ArchitectureStudio: React.FC<ArchitectureStudioProps> = ({ onViewSo
     <div className="space-y-6">
       {/* Header */}
       <div className="border-b border-slate-800 pb-5">
-        <div className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1">
+        <div className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1 font-semibold">
           Deep Convolutional Network Mechanics · Multi-Branch Receptive Fields
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white text-balance">
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-heading text-balance">
           Multi-Scale CNN Architecture Studio
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-3xl">
+        </h2>
+        <p className="text-sm sm:text-base text-slate-300 mt-2 max-w-3xl leading-relaxed">
           Food items possess textural and semantic hierarchies across distinct spatial frequencies. The Multi-Scale Food CNN branches into 4 parallel convolutional receptive fields combined with Channel Attention (SE-Net) to concurrently resolve micro-crispiness, ingredient cuts, and plating context.
         </p>
       </div>

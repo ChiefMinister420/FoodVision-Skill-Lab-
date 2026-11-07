@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { FoodDishSample, ScaleAnalysis } from '../types/food';
+import { FoodDishSample } from '../types/food';
 import { sampleDishes } from '../data/sampleDishes';
 import { FeatureMapCanvas } from './FeatureMapCanvas';
-import { Food3DViewer } from './Food3DViewer';
 import { RadarChart } from './RadarChart';
-import { Upload, Camera, Sparkles, Sliders, Info, CheckCircle2, Box, Layers, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import { AttributeTrendPanel, SessionHistoryItem } from './AttributeTrendPanel';
+import { ReportModal } from './ReportModal';
+import { Upload, Sparkles, CheckCircle2, Layers, SlidersHorizontal, ChevronRight, FileDown } from 'lucide-react';
 
 interface InferenceLabProps {
   onOpenDeveloperHub: (tab?: 'architecture' | 'ibm-benchmarks' | 'repo-docker') => void;
@@ -13,17 +14,104 @@ interface InferenceLabProps {
 export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }) => {
   const [selectedDish, setSelectedDish] = useState<FoodDishSample>(sampleDishes[0]);
   const [activeScale, setActiveScale] = useState<'original' | 'micro' | 'meso' | 'macro' | 'gradcam'>('gradcam');
-  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d'); // Default to rich 3D Food Model
-  const [overlayOpacity, setOverlayOpacity] = useState<number>(0.8);
+  const [overlayOpacity, setOverlayOpacity] = useState<number>(0.85);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'cooking' | 'texture' | 'dietary' | 'cuisine' | 'flavor'>('all');
   const [customImageUploaded, setCustomImageUploaded] = useState<string | null>(null);
-  const [aiAnalysisSource, setAiAnalysisSource] = useState<'preset' | 'gemini-live' | 'local-engine'>('preset');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Initial session history populated with diverse benchmark food detections
+  const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([
+    {
+      timestamp: '10:14',
+      dishName: 'Tempura Donburi',
+      crispiness: 95,
+      umami: 92,
+      bakedOrFried: 96,
+      vegetarian: 22,
+      proteinDensity: 82,
+      topAttribute: 'Crispy & Crunchy',
+    },
+    {
+      timestamp: '10:18',
+      dishName: 'Pizza Margherita',
+      crispiness: 78,
+      umami: 88,
+      bakedOrFried: 98,
+      vegetarian: 99,
+      proteinDensity: 65,
+      topAttribute: 'Chewy & Airy Dough',
+    },
+    {
+      timestamp: '10:22',
+      dishName: 'Kung Pao Chicken',
+      crispiness: 85,
+      umami: 96,
+      bakedOrFried: 94,
+      vegetarian: 2,
+      proteinDensity: 92,
+      topAttribute: 'Wok-Fried & Spicy',
+    },
+    {
+      timestamp: '10:27',
+      dishName: 'Greek Salad',
+      crispiness: 92,
+      umami: 62,
+      bakedOrFried: 1,
+      vegetarian: 99,
+      proteinDensity: 45,
+      topAttribute: 'Crisp & Raw Garden',
+    },
+    {
+      timestamp: '10:31',
+      dishName: 'French Croissant',
+      crispiness: 98,
+      umami: 45,
+      bakedOrFried: 99,
+      vegetarian: 98,
+      proteinDensity: 45,
+      topAttribute: 'Flaky & Laminated',
+    },
+  ]);
+
+  const recordDishToHistory = (dish: FoodDishSample) => {
+    const crisp = dish.radarSensoryVector.find((r) => r.axis === 'Crispiness')?.value || 80;
+    const umamiVal = dish.radarSensoryVector.find((r) => r.axis === 'Umami')?.value || 85;
+    const friedOrBaked = Math.round(
+      ((dish.attributes.cookingState.find((c) => c.name.includes('Fried') || c.name.includes('Baked'))?.confidence || 0.8) * 100)
+    );
+    const veg = Math.round(
+      ((dish.attributes.dietary.find((d) => d.name === 'Vegetarian')?.confidence || 0.5) * 100)
+    );
+    const protein = Math.round(
+      ((dish.attributes.nutrition.find((n) => n.name.includes('Protein'))?.confidence || 0.7) * 100)
+    );
+
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const newEntry: SessionHistoryItem = {
+      timestamp: timeStr,
+      dishName: dish.name.split(' ').slice(0, 2).join(' '),
+      crispiness: crisp,
+      umami: umamiVal,
+      bakedOrFried: friedOrBaked,
+      vegetarian: veg,
+      proteinDensity: protein,
+      topAttribute: dish.scaleAnalysis.microScale.primaryTextualTexture,
+    };
+
+    setSessionHistory((prev) => [...prev, newEntry]);
+  };
 
   const handleSelectDish = (dish: FoodDishSample) => {
     setSelectedDish(dish);
     setCustomImageUploaded(null);
-    setAiAnalysisSource('preset');
+    recordDishToHistory(dish);
+  };
+
+  const handleResetSession = () => {
+    setSessionHistory([]);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +126,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
       const customSample: FoodDishSample = {
         id: 'custom-upload',
         name: file.name.replace(/\.[^/.]+$/, ''),
-        cuisine: 'Custom Food Sample',
+        cuisine: 'Uploaded Food Sample',
         imageUrl: base64,
         description: 'Custom food image evaluated through multi-scale convolutional feature pyramids.',
         scaleAnalysis: {
@@ -51,16 +139,16 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
           },
           mesoScale: {
             receptiveField: '7×7 Dilated Conv (RF: 23)',
-            detectedIngredients: ['Primary protein/produce borders', 'Segment contours'],
+            detectedIngredients: ['Primary produce/protein borders', 'Segment contours'],
             boundaryClarity: 0.84,
             componentCountEstimate: 3,
-            description: 'Intermediate kernels detect culinary boundaries.',
+            description: 'Intermediate kernels isolate individual culinary boundaries.',
           },
           macroScale: {
             receptiveField: '15×15+ Dilated (RF: 75+)',
             dishContext: 'Plated food arrangement',
             presentationStyle: 'Centric presentation',
-            temperatureEstimate: 'Estimated Warm/Hot',
+            temperatureEstimate: 'Estimated Warm/Ambient',
             description: 'Macro pooling abstracts dish geometry.',
           },
         },
@@ -74,6 +162,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
       };
 
       setSelectedDish(customSample);
+      recordDishToHistory(customSample);
       triggerAiAnalysis(base64, file.name);
     };
     reader.readAsDataURL(file);
@@ -169,70 +258,78 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
         };
 
         setSelectedDish(updatedSample);
-        setAiAnalysisSource('gemini-live');
+        recordDishToHistory(updatedSample);
       }
     } catch (err) {
       console.warn('Backend API fallback triggered:', err);
-      setAiAnalysisSource('local-engine');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   const attributeGroups = [
-    { title: 'Cooking & Thermal Method', key: 'cooking', data: selectedDish.attributes.cookingState },
-    { title: 'Texture & Mouthfeel', key: 'texture', data: selectedDish.attributes.texture },
-    { title: 'Dietary & Allergen Profile', key: 'dietary', data: selectedDish.attributes.dietary },
-    { title: 'Cuisine Tradition', key: 'cuisine', data: selectedDish.attributes.cuisine },
-    { title: 'Flavor & Sensory Taste', key: 'flavor', data: selectedDish.attributes.flavor },
-    { title: 'Nutritional Density', key: 'nutrition', data: selectedDish.attributes.nutrition },
+    { title: 'Cooking Method & Thermal State', key: 'cooking', data: selectedDish.attributes.cookingState },
+    { title: 'Texture & Mouthfeel Profile', key: 'texture', data: selectedDish.attributes.texture },
+    { title: 'Dietary & Allergen Boundaries', key: 'dietary', data: selectedDish.attributes.dietary },
+    { title: 'Cuisine Culinary Tradition', key: 'cuisine', data: selectedDish.attributes.cuisine },
+    { title: 'Flavor & Sensory Taste Spectrum', key: 'flavor', data: selectedDish.attributes.flavor },
+    { title: 'Nutritional Density Profile', key: 'nutrition', data: selectedDish.attributes.nutrition },
   ].filter((grp) => activeCategoryFilter === 'all' || activeCategoryFilter === grp.key);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Studio Header on Matte Beige & Light Grey Surface */}
       <div className="relative rounded-2xl bg-white border border-[#E5E0D8] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.03)] overflow-hidden">
-        {/* Subtle warm morning light tint */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-[#FFF9F2] to-transparent pointer-events-none rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2 opacity-70" />
+        {/* Soft morning window light aura */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-[#FFF8EE] to-transparent pointer-events-none rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 opacity-80" />
 
         <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="text-[11px] font-mono uppercase tracking-widest text-stone-500 font-semibold flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-stone-900"></span>
-              <span>High-End Tech-Wellness · Studio Photography & 3D Intelligence</span>
+          <div className="space-y-2.5 max-w-3xl">
+            <div className="text-xs font-mono uppercase tracking-widest text-stone-600 font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-stone-900"></span>
+              <span>Multi-Scale Convolutional Feature Intelligence · IBM Food Computing</span>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-stone-900 text-balance">
-              Food Attribute Classification & 3D Receptive Field Studio
+            {/* Times New Roman Main Title */}
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-stone-900 font-heading text-balance leading-tight">
+              Food Attribute Classification & Receptive Field Studio
             </h1>
 
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-              Analyze multi-scale convolutional receptive fields (3×3 micro-texture, 7×7 meso-ingredients, 15×15+ macro-presentation) with interactive 3D food geometries and multi-attribute classification.
+            <p className="text-sm sm:text-base text-stone-700 leading-relaxed max-w-2xl">
+              Inspect multi-scale convolutional receptive fields (3×3 micro-texture, 7×7 meso-ingredients, 15×15+ macro-presentation) for high-accuracy food attribute prediction and session trend analysis.
             </p>
           </div>
 
-          {/* Quick Hub Access Button */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          {/* Quick Hub Access & Download Report Buttons */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <FileDown className="w-4 h-4 text-amber-300" />
+              <span>Download Report</span>
+            </button>
+
             <button
               onClick={() => onOpenDeveloperHub('architecture')}
-              className="px-3.5 py-2 bg-[#F5F2EB] hover:bg-[#ECE8DF] text-stone-800 text-xs font-medium rounded-lg border border-[#DDD7CD] transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+              className="px-4 py-2.5 bg-[#F5F2EB] hover:bg-[#ECE7DE] text-stone-900 text-sm font-semibold rounded-xl border border-[#DDD7CD] transition-all flex items-center gap-2 cursor-pointer shadow-xs"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-stone-700" />
-              <span>Architecture & Repo Settings</span>
-              <ChevronRight className="w-3.5 h-3.5 text-stone-400" />
+              <SlidersHorizontal className="w-4 h-4 text-stone-800" />
+              <span>Architecture & Code Hub</span>
+              <ChevronRight className="w-4 h-4 text-stone-500" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Dish Selector Strip */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between text-xs text-stone-600">
-          <span className="font-mono uppercase tracking-wider text-[11px] font-semibold text-stone-700">
-            Culinary Benchmark Discs:
+      {/* Culinary Benchmark Discs Strip */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-sm text-stone-700">
+          <span className="font-heading uppercase tracking-wider text-base font-bold text-stone-900">
+            Select Culinary Benchmark Dish:
           </span>
-          <label className="text-stone-900 hover:text-stone-700 transition-colors flex items-center gap-1.5 cursor-pointer font-medium text-xs">
-            <Upload className="w-3.5 h-3.5 text-stone-800" />
+          <label className="text-stone-900 hover:text-stone-700 transition-colors flex items-center gap-2 cursor-pointer font-semibold text-sm">
+            <Upload className="w-4 h-4 text-stone-800" />
             <span>Upload Custom Food Photo</span>
             <input
               type="file"
@@ -243,17 +340,17 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
           </label>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           {sampleDishes.map((dish) => {
             const isSelected = selectedDish.id === dish.id && !customImageUploaded;
             return (
               <button
                 key={dish.id}
                 onClick={() => handleSelectDish(dish)}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-2 ${
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-2.5 ${
                   isSelected
-                    ? 'border-stone-900 bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)] ring-1 ring-stone-900/10'
-                    : 'border-[#E5E0D8] bg-white/70 hover:bg-white hover:border-[#D5CFBF] text-stone-600'
+                    ? 'border-stone-900 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.08)] ring-2 ring-stone-900/10'
+                    : 'border-[#E5E0D8] bg-white/80 hover:bg-white hover:border-[#D5CFBF] text-stone-700 shadow-2xs'
                 }`}
               >
                 <div className="relative aspect-16/10 rounded-lg overflow-hidden bg-stone-100">
@@ -263,16 +360,16 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-1.5 right-1.5 bg-stone-950/80 backdrop-blur-xs text-[10px] font-mono px-1.5 py-0.5 rounded text-white font-medium">
+                  <div className="absolute top-1.5 right-1.5 bg-stone-950/85 backdrop-blur-xs text-xs font-mono px-2 py-0.5 rounded text-white font-semibold">
                     {dish.cuisine}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs font-bold text-stone-900 truncate">
+                  <div className="text-sm sm:text-base font-bold text-stone-900 truncate font-heading">
                     {dish.name}
                   </div>
-                  <div className="text-[11px] text-stone-500 truncate mt-0.5 font-mono">
+                  <div className="text-xs text-stone-600 truncate mt-0.5 font-mono">
                     {dish.scaleAnalysis.microScale.primaryTextualTexture}
                   </div>
                 </div>
@@ -282,50 +379,31 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
         </div>
       </div>
 
-      {/* Main Analysis Grid: Left 3D/2D Visualizer, Right 3D-Animated Attribute Classification */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (5 Cols): 3D Food Model & Receptive Field Visualizer */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white border border-[#E5E0D8] rounded-2xl p-5 space-y-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            {/* Visualizer Mode Switch (3D Food Model vs 2D Feature Map) */}
+      {/* Main Analysis Grid: Left 2D Receptive Field Map, Right Multi-Attribute Classification */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (5 Cols): Pure 2D Planar Receptive Field Map */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 space-y-5 shadow-[0_4px_24px_rgb(0,0,0,0.03)]">
+            {/* Visualizer Header */}
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-stone-900">
-                <Box className="w-4 h-4 text-stone-800" />
-                <span>Receptive Field Stage</span>
+              <div className="flex items-center gap-2 text-stone-900">
+                <Layers className="w-5 h-5 text-stone-800" />
+                <h3 className="font-heading text-lg sm:text-xl font-bold">
+                  2D Receptive Field Stage
+                </h3>
               </div>
-
-              {/* 3D vs 2D Toggle */}
-              <div className="flex items-center p-0.5 bg-[#F2EDE4] rounded-lg border border-[#E5DFD5] text-xs font-mono">
-                <button
-                  onClick={() => setViewMode('3d')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer font-medium ${
-                    viewMode === '3d'
-                      ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  3D Model
-                </button>
-                <button
-                  onClick={() => setViewMode('2d')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer font-medium ${
-                    viewMode === '2d'
-                      ? 'bg-white text-stone-900 shadow-2xs font-bold'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  2D Map
-                </button>
-              </div>
+              <span className="text-xs font-mono text-stone-500 font-semibold uppercase">
+                Planar Activation
+              </span>
             </div>
 
             {/* Segmented Scale Controller */}
-            <div className="grid grid-cols-5 gap-1 p-1 bg-[#F5F2EB] rounded-lg border border-[#E8E4DC] text-[11px] font-mono">
+            <div className="grid grid-cols-5 gap-1.5 p-1.5 bg-[#F5F2EB] rounded-xl border border-[#E8E4DC] text-xs font-mono">
               <button
                 onClick={() => setActiveScale('original')}
-                className={`py-1.5 rounded transition-all cursor-pointer whitespace-nowrap text-center ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
                   activeScale === 'original'
-                    ? 'bg-white text-stone-900 font-bold shadow-2xs'
+                    ? 'bg-white text-stone-900 font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -333,9 +411,9 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveScale('micro')}
-                className={`py-1.5 rounded transition-all cursor-pointer whitespace-nowrap text-center ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
                   activeScale === 'micro'
-                    ? 'bg-stone-900 text-white font-bold shadow-2xs'
+                    ? 'bg-stone-900 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -343,9 +421,9 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveScale('meso')}
-                className={`py-1.5 rounded transition-all cursor-pointer whitespace-nowrap text-center ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
                   activeScale === 'meso'
-                    ? 'bg-amber-600 text-white font-bold shadow-2xs'
+                    ? 'bg-amber-600 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -353,9 +431,9 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveScale('macro')}
-                className={`py-1.5 rounded transition-all cursor-pointer whitespace-nowrap text-center ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
                   activeScale === 'macro'
-                    ? 'bg-purple-700 text-white font-bold shadow-2xs'
+                    ? 'bg-purple-700 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -363,9 +441,9 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveScale('gradcam')}
-                className={`py-1.5 rounded transition-all cursor-pointer whitespace-nowrap text-center ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
                   activeScale === 'gradcam'
-                    ? 'bg-rose-600 text-white font-bold shadow-2xs'
+                    ? 'bg-rose-600 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -373,29 +451,20 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
             </div>
 
-            {/* Viewport: 3D Model or 2D Feature Map */}
-            {viewMode === '3d' ? (
-              <Food3DViewer
-                dishId={selectedDish.id}
-                activeScale={activeScale}
-                opacity={overlayOpacity}
-                gradCamPoints={selectedDish.gradCamPoints}
-              />
-            ) : (
-              <FeatureMapCanvas
-                imageUrl={selectedDish.imageUrl}
-                activeScale={activeScale}
-                gradCamPoints={selectedDish.gradCamPoints}
-                opacity={overlayOpacity}
-                dishName={selectedDish.name}
-              />
-            )}
+            {/* 2D Feature Map Canvas */}
+            <FeatureMapCanvas
+              imageUrl={selectedDish.imageUrl}
+              activeScale={activeScale}
+              gradCamPoints={selectedDish.gradCamPoints}
+              opacity={overlayOpacity}
+              dishName={selectedDish.name}
+            />
 
             {/* Heatmap Opacity Slider */}
             {activeScale !== 'original' && (
-              <div className="flex items-center justify-between gap-3 px-1 text-xs">
-                <span className="text-stone-600 font-mono text-[11px] shrink-0 font-medium">
-                  Heatmap Blend
+              <div className="flex items-center justify-between gap-3 px-1 text-sm">
+                <span className="text-stone-700 font-mono text-xs sm:text-sm shrink-0 font-semibold">
+                  Feature Heatmap Opacity
                 </span>
                 <input
                   type="range"
@@ -404,57 +473,57 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                   step="0.05"
                   value={overlayOpacity}
                   onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
-                  className="w-full accent-stone-900 h-1.5 bg-[#E8E4DC] rounded-lg cursor-pointer"
+                  className="w-full accent-stone-900 h-2 bg-[#E8E4DC] rounded-lg cursor-pointer"
                 />
-                <span className="font-mono text-stone-900 font-semibold text-xs tabular-nums w-9 text-right">
-                  {(overlayOpacity * 100).toFixed(0)}%
+                <span className="font-mono text-stone-900 font-bold text-sm tabular-nums w-12 text-right">
+                  {Math.round(overlayOpacity * 100)}%
                 </span>
               </div>
             )}
 
             {/* Scale Explanation Card */}
-            <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC] text-xs space-y-2">
+            <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC] space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-stone-900">
+                <h4 className="font-bold text-stone-900 text-sm sm:text-base font-heading">
                   {activeScale === 'micro' && 'Scale 1: Micro-Scale 3×3 High-Pass Filter'}
                   {activeScale === 'meso' && 'Scale 2: Meso-Scale Component Segmenter'}
                   {activeScale === 'macro' && 'Scale 3: Macro-Scale Global Receptive Field'}
                   {activeScale === 'gradcam' && 'Grad-CAM Multi-Head Backpropagation'}
-                  {activeScale === 'original' && 'Raw Input Tensor & Photorealistic 3D Mesh'}
-                </span>
-                <span className="font-mono text-[10px] text-stone-700 bg-white px-2 py-0.5 rounded border border-[#E0D8CC]">
+                  {activeScale === 'original' && 'Raw Input Tensor (224×224×3 RGB)'}
+                </h4>
+                <span className="font-mono text-xs text-stone-700 bg-white px-2.5 py-1 rounded-md border border-[#E0D8CC] font-semibold">
                   {activeScale === 'micro' && selectedDish.scaleAnalysis.microScale.receptiveField}
                   {activeScale === 'meso' && selectedDish.scaleAnalysis.mesoScale.receptiveField}
                   {activeScale === 'macro' && selectedDish.scaleAnalysis.macroScale.receptiveField}
                   {activeScale === 'gradcam' && 'Stage 4 Attn'}
-                  {activeScale === 'original' && '224×224×3 RGB'}
+                  {activeScale === 'original' && '224×224 RGB'}
                 </span>
               </div>
 
-              <p className="text-stone-600 text-[11px] leading-relaxed">
+              <p className="text-stone-700 text-xs sm:text-sm leading-relaxed">
                 {activeScale === 'micro' && selectedDish.scaleAnalysis.microScale.description}
                 {activeScale === 'meso' && selectedDish.scaleAnalysis.mesoScale.description}
                 {activeScale === 'macro' && selectedDish.scaleAnalysis.macroScale.description}
                 {activeScale === 'gradcam' &&
-                  'Gradient-weighted Class Activation Mapping computes the gradient of target attribute logits with respect to Stage-4 feature maps to localize decisive visual cues in 2D and 3D space.'}
+                  'Gradient-weighted Class Activation Mapping computes the gradient of target attribute logits with respect to Stage-4 feature maps to localize decisive visual cues in 2D space.'}
                 {activeScale === 'original' && selectedDish.description}
               </p>
 
-              <div className="pt-1 flex flex-wrap gap-1.5 text-[10px] font-mono text-stone-600">
+              <div className="pt-1.5 flex flex-wrap gap-2 text-xs font-mono text-stone-600">
                 {activeScale === 'micro' &&
                   selectedDish.scaleAnalysis.microScale.detectedFeatures.map((feat, i) => (
-                    <span key={i} className="text-stone-800 font-medium">
-                      #{feat} {i < selectedDish.scaleAnalysis.microScale.detectedFeatures.length - 1 && '·'}
+                    <span key={i} className="text-stone-900 font-semibold bg-white px-2 py-0.5 rounded border border-[#E5E0D8]">
+                      #{feat}
                     </span>
                   ))}
                 {activeScale === 'meso' &&
                   selectedDish.scaleAnalysis.mesoScale.detectedIngredients.map((ing, i) => (
-                    <span key={i} className="text-amber-700 font-medium">
+                    <span key={i} className="text-amber-800 font-semibold bg-white px-2 py-0.5 rounded border border-[#E5E0D8]">
                       • {ing}
                     </span>
                   ))}
                 {activeScale === 'macro' && (
-                  <span className="text-purple-700 font-medium">
+                  <span className="text-purple-800 font-semibold bg-white px-2.5 py-1 rounded border border-[#E5E0D8]">
                     Context: {selectedDish.scaleAnalysis.macroScale.dishContext} · Temp: {selectedDish.scaleAnalysis.macroScale.temperatureEstimate}
                   </span>
                 )}
@@ -462,54 +531,64 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
             </div>
 
             {/* Sensory Radar Vector Mini Panel */}
-            <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC]">
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="font-mono text-stone-700 uppercase tracking-wider text-[11px] font-semibold">
+            <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC] space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-heading uppercase tracking-wider text-sm font-bold text-stone-900">
                   Sensory Vector Calibration
                 </span>
-                <span className="text-[10px] font-mono text-stone-500">
+                <span className="text-xs font-mono text-stone-500 font-medium">
                   Radar Space
                 </span>
               </div>
-              <RadarChart data={selectedDish.radarSensoryVector} size={220} />
+              <RadarChart data={selectedDish.radarSensoryVector} size={240} />
             </div>
           </div>
         </div>
 
-        {/* Right Column (7 Cols): 3D-Animated Multi-Attribute Classification */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white border border-[#E5E0D8] rounded-2xl p-5 space-y-4 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Right Column (7 Cols): Multi-Attribute Predictions */}
+        <div className="lg:col-span-7 space-y-5">
+          <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 sm:p-8 space-y-6 shadow-[0_4px_24px_rgb(0,0,0,0.03)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-stone-900 font-heading flex items-center gap-2.5">
                   <span>Multi-Label Attribute Classification</span>
-                  <span className="text-xs font-mono text-stone-700 bg-[#F5F2EB] px-2 py-0.5 rounded border border-[#E0D8CC] font-semibold">
+                  <span className="text-xs font-mono text-stone-800 bg-[#F5F2EB] px-2.5 py-1 rounded-md border border-[#E0D8CC] font-bold">
                     6 Orthogonal Axes
                   </span>
-                </h2>
-                <div className="text-xs text-stone-500 mt-0.5">
-                  Threshold: <strong className="text-stone-800 font-mono">0.50</strong> · Decision rule: Sigmoid multi-hot activations
+                </h3>
+                <div className="text-xs sm:text-sm text-stone-600 mt-1">
+                  Threshold: <strong className="text-stone-900 font-mono font-bold">0.50</strong> · Decision rule: Sigmoid multi-hot activations
                 </div>
               </div>
 
-              {/* Action button */}
-              <button
-                onClick={() => triggerAiAnalysis(selectedDish.imageUrl, selectedDish.name)}
-                disabled={isAnalyzing}
-                className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>{isAnalyzing ? 'Extracting Features...' : 'Re-Analyze Dish'}</span>
-              </button>
+              {/* Action buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="px-3.5 py-2 bg-[#F5F2EB] hover:bg-[#ECE7DE] text-stone-900 text-xs sm:text-sm font-semibold rounded-xl border border-[#DDD7CD] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-stone-800" />
+                  <span>Report</span>
+                </button>
+
+                <button
+                  onClick={() => triggerAiAnalysis(selectedDish.imageUrl, selectedDish.name)}
+                  disabled={isAnalyzing}
+                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{isAnalyzing ? 'Extracting...' : 'Re-Analyze'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Segmented Category Filter Bar */}
-            <div className="flex items-center gap-1 p-1 bg-[#F5F2EB] rounded-lg border border-[#E8E4DC] overflow-x-auto text-xs">
+            <div className="flex items-center gap-1.5 p-1.5 bg-[#F5F2EB] rounded-xl border border-[#E8E4DC] overflow-x-auto text-xs sm:text-sm font-mono">
               <button
                 onClick={() => setActiveCategoryFilter('all')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'all'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -517,19 +596,19 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('cooking')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'cooking'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Cooking Method
+                Cooking
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('texture')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'texture'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -537,19 +616,19 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('dietary')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'dietary'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Dietary & Allergens
+                Dietary
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('cuisine')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'cuisine'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -557,9 +636,9 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('flavor')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                   activeCategoryFilter === 'flavor'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -567,71 +646,70 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </button>
             </div>
 
-            {/* 3D Animated Attribute Cards */}
-            <div className="space-y-4 pt-1">
+            {/* Attribute Groups with Proper Readable Spacing */}
+            <div className="space-y-5 pt-1">
               {attributeGroups.map((group) => (
                 <div
                   key={group.key}
-                  className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E8E4DC] space-y-3 transition-all hover:shadow-[0_8px_25px_rgba(40,30,20,0.06)] hover:-translate-y-0.5 duration-200"
-                  style={{ perspective: '1000px' }}
+                  className="p-5 rounded-xl bg-[#FAF8F5] border border-[#E8E4DC] space-y-4 transition-all hover:shadow-[0_8px_25px_rgba(40,30,20,0.06)] duration-200"
                 >
-                  <div className="flex items-center justify-between text-xs border-b border-[#E8E4DC] pb-2">
-                    <span className="font-bold text-stone-900 uppercase tracking-wider font-mono text-[11px]">
+                  <div className="flex items-center justify-between text-sm border-b border-[#E8E4DC] pb-2.5">
+                    <span className="font-heading uppercase tracking-wider text-base font-bold text-stone-900">
                       {group.title}
                     </span>
-                    <span className="text-[11px] font-mono text-stone-500">
-                      Top Read: <strong className="text-stone-900 font-semibold">{group.data[0]?.name}</strong> ({((group.data[0]?.confidence || 0) * 100).toFixed(0)}%)
+                    <span className="text-xs sm:text-sm font-mono text-stone-600 font-medium">
+                      Top Read: <strong className="text-stone-900 font-bold">{group.data[0]?.name}</strong> ({((group.data[0]?.confidence || 0) * 100).toFixed(0)}%)
                     </span>
                   </div>
 
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {group.data.map((item, idx) => {
                       const pct = Math.round(item.confidence * 100);
                       const isPositive = item.confidence >= (item.threshold || 0.5);
 
                       return (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1.5">
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-sm sm:text-base">
+                            <span className="flex items-center gap-2">
                               {isPositive ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-stone-900 shrink-0" />
+                                <CheckCircle2 className="w-4 h-4 text-stone-900 shrink-0" />
                               ) : (
-                                <span className="w-3.5 h-3.5 flex items-center justify-center text-stone-400 shrink-0 font-mono text-[10px]">
+                                <span className="w-4 h-4 flex items-center justify-center text-stone-400 shrink-0 font-mono text-xs">
                                   —
                                 </span>
                               )}
-                              <span className={`font-medium ${isPositive ? 'text-stone-900 font-semibold' : 'text-stone-500'}`}>
+                              <span className={`font-medium ${isPositive ? 'text-stone-950 font-bold' : 'text-stone-600'}`}>
                                 {item.name}
                               </span>
                             </span>
 
-                            <div className="flex items-center gap-2 font-mono text-xs tabular-nums">
-                              <span className={isPositive ? 'text-stone-900 font-bold' : 'text-stone-400'}>
+                            <div className="flex items-center gap-2.5 font-mono text-sm sm:text-base tabular-nums">
+                              <span className={isPositive ? 'text-stone-950 font-bold' : 'text-stone-500'}>
                                 {pct}%
                               </span>
-                              <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${
+                              <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold ${
                                 isPositive
                                   ? 'bg-stone-900 text-white'
-                                  : 'bg-[#ECE7DE] text-stone-500'
+                                  : 'bg-[#ECE7DE] text-stone-600'
                               }`}>
-                                {isPositive ? 'ACTIVE' : 'IDLE'}
+                                {isPositive ? 'POSITIVE' : 'IDLE'}
                               </span>
                             </div>
                           </div>
 
-                          {/* 3D-styled Depth Confidence Bar */}
-                          <div className="relative w-full h-2 bg-[#EBE5DB] rounded-full overflow-hidden shadow-inner">
+                          {/* Confidence Bar */}
+                          <div className="relative w-full h-2.5 bg-[#EBE5DB] rounded-full overflow-hidden shadow-inner">
                             <div
                               style={{ width: `${pct}%` }}
                               className={`h-full rounded-full transition-all duration-500 ${
                                 isPositive
-                                  ? 'bg-gradient-to-r from-stone-800 via-stone-900 to-stone-950 shadow-[0_0_8px_rgba(0,0,0,0.2)]'
+                                  ? 'bg-gradient-to-r from-stone-800 via-stone-900 to-stone-950 shadow-[0_0_8px_rgba(0,0,0,0.25)]'
                                   : 'bg-stone-400/80'
                               }`}
                             />
                             {/* 50% Threshold marker */}
                             <div
-                              className="absolute top-0 bottom-0 w-0.5 bg-stone-500/50"
+                              className="absolute top-0 bottom-0 w-0.5 bg-stone-500/60"
                               style={{ left: '50%' }}
                             />
                           </div>
@@ -643,20 +721,24 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               ))}
             </div>
 
-            {/* Quick Developer Hub Banner */}
-            <div className="pt-3 border-t border-[#E8E4DC] flex items-center justify-between text-xs text-stone-500">
-              <span>Need the complete Python training pipeline or Dockerfile?</span>
-              <button
-                onClick={() => onOpenDeveloperHub('repo-docker')}
-                className="text-stone-900 hover:text-stone-700 font-semibold font-mono text-xs flex items-center gap-1 cursor-pointer"
-              >
-                <span>Open Developer & System Hub</span>
-                <span>→</span>
-              </button>
-            </div>
+            {/* Note: The "Looking for the full PyTorch training loop or Dockerfile?" banner was completely removed per user request */}
           </div>
         </div>
       </div>
+
+      {/* Recharts-based Historical Session Trend Analysis Panel */}
+      <AttributeTrendPanel
+        sessionHistory={sessionHistory}
+        onResetSession={handleResetSession}
+      />
+
+      {/* Download Report Modal (Generates JSON or Print/PDF) */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        currentDish={selectedDish}
+        sessionHistory={sessionHistory}
+      />
     </div>
   );
 };

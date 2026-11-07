@@ -4,7 +4,12 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Times New Roman', Times, Baskerville, Georgia, serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.font-heading {
+  font-family: 'Times New Roman', Times, Baskerville, Georgia, serif;
 }
 
 /* Custom scrollbars for high-density code and data panels */
@@ -21,4 +26,14 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
+}
+
+@media print {
+  header, footer, nav, .no-print {
+    display: none !important;
+  }
+  body {
+    background: #FFFFFF !important;
+    color: #1C1917 !important;
+  }
 }

@@ -53,10 +53,10 @@ export const GitHubRepoStudio: React.FC<GitHubRepoStudioProps> = ({
           <div className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1">
             Production GitHub Repository · Containerized Deployment
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white text-balance">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-heading text-balance">
             Python AI/ML Codebase & Docker Deployment Center
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-3xl">
+          </h2>
+          <p className="text-sm sm:text-base text-slate-300 mt-2 max-w-3xl leading-relaxed">
             Complete, production-grade PyTorch and FastAPI files formatted for immediate Git repository initialization or Docker container deployment on local GPUs, IBM Cloud, or AWS.
           </p>
         </div>

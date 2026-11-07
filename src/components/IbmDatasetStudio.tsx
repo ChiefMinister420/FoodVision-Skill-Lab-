@@ -41,13 +41,13 @@ export const IbmDatasetStudio: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="border-b border-slate-800 pb-5">
-        <div className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1">
+        <div className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-1 font-semibold">
           Empirical Validation · IBM Public Datasets & Benchmarks
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white text-balance">
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-heading text-balance">
           IBM Food Computing Resources & Training Benchmarks
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-3xl">
+        </h2>
+        <p className="text-sm sm:text-base text-slate-300 mt-2 max-w-3xl leading-relaxed">
           Leveraging open resources pioneered by IBM Research (Chef Watson, IBM Food-101 multi-attribute taxonomy, and Model Asset eXchange). Comparative evaluations demonstrate significant accuracy gains of multi-scale convolutional pyramids over single-scale baselines.
         </p>
       </div>

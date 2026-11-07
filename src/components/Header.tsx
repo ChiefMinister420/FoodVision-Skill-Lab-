@@ -19,12 +19,12 @@ export const Header: React.FC<HeaderProps> = ({
         <a
           href="/"
           onClick={(e) => e.preventDefault()}
-          className="text-base font-bold tracking-tight text-stone-900 flex items-center gap-2 hover:text-stone-700 transition-colors"
+          className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 font-heading flex items-center gap-2 hover:text-stone-700 transition-colors"
         >
           <span className="w-2.5 h-2.5 rounded-sm bg-stone-900 inline-block"></span>
           <span>FoodVision MS-CNN</span>
         </a>
-        <span className="hidden sm:inline-block text-xs font-mono text-stone-600 font-medium">v1.2</span>
+        <span className="hidden sm:inline-block text-xs font-mono text-stone-600 font-medium">v1.3</span>
       </div>
 
       {/* Zone 2: 4 clean single-line informational badges / direct feature links */}
