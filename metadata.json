@@ -1,0 +1,6 @@
+{
+  "name": "FoodVision MS-CNN: Food Attribute Classifier",
+  "description": "Multi-scale convolutional neural network for granular food attribute classification with IBM open food benchmarks, receptive-field visualizer, and complete Python repository with Docker deployment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
