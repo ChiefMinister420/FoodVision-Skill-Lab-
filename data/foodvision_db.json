@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "records": [
+    {
+      "id": "seed-rec-1",
+      "timestamp": "10:14",
+      "dishName": "Tempura Donburi",
+      "cuisine": "Japanese",
+      "crispiness": 95,
+      "umami": 92,
+      "bakedOrFried": 96,
+      "vegetarian": 22,
+      "proteinDensity": 82,
+      "topAttribute": "Crispy & Crunchy Crust",
+      "confidenceThreshold": 0.5,
+      "createdAt": "2026-11-07T04:55:19.260Z"
+    },
+    {
+      "id": "seed-rec-2",
+      "timestamp": "10:18",
+      "dishName": "Pizza Margherita",
+      "cuisine": "Italian",
+      "crispiness": 78,
+      "umami": 88,
+      "bakedOrFried": 98,
+      "vegetarian": 99,
+      "proteinDensity": 65,
+      "topAttribute": "Chewy & Airy Dough",
+      "confidenceThreshold": 0.5,
+      "createdAt": "2026-11-07T05:25:19.260Z"
+    },
+    {
+      "id": "seed-rec-3",
+      "timestamp": "10:22",
+      "dishName": "Kung Pao Chicken",
+      "cuisine": "Sichuan Chinese",
+      "crispiness": 85,
+      "umami": 96,
+      "bakedOrFried": 94,
+      "vegetarian": 2,
+      "proteinDensity": 92,
+      "topAttribute": "Wok-Fried & Spicy Glaze",
+      "confidenceThreshold": 0.5,
+      "createdAt": "2026-11-07T05:55:19.260Z"
+    },
+    {
+      "id": "seed-rec-4",
+      "timestamp": "10:27",
+      "dishName": "Greek Salad",
+      "cuisine": "Mediterranean",
+      "crispiness": 92,
+      "umami": 62,
+      "bakedOrFried": 1,
+      "vegetarian": 99,
+      "proteinDensity": 45,
+      "topAttribute": "Crisp & Raw Garden Produce",
+      "confidenceThreshold": 0.5,
+      "createdAt": "2026-11-07T06:25:19.260Z"
+    },
+    {
+      "id": "seed-rec-5",
+      "timestamp": "10:31",
+      "dishName": "French Croissant",
+      "cuisine": "French Patisserie",
+      "crispiness": 98,
+      "umami": 45,
+      "bakedOrFried": 99,
+      "vegetarian": 98,
+      "proteinDensity": 45,
+      "topAttribute": "Flaky & Laminated Micro-Layers",
+      "confidenceThreshold": 0.5,
+      "createdAt": "2026-11-07T06:40:19.260Z"
+    },
+    {
+      "dishName": "Matcha Parfait",
+      "cuisine": "Japanese Patisserie",
+      "timestamp": "11:00",
+      "crispiness": 75,
+      "umami": 60,
+      "bakedOrFried": 40,
+      "vegetarian": 99,
+      "proteinDensity": 35,
+      "topAttribute": "Creamy & Delicate Crumb",
+      "confidenceThreshold": 0.5,
+      "id": "rec-1794034526054-hfif9",
+      "createdAt": "2026-11-07T06:55:26.054Z"
+    }
+  ],
+  "customDishes": [],
+  "metadata": {
+    "lastUpdated": "2026-11-07T06:55:26.054Z",
+    "totalClassificationsCount": 6
+  }
+}

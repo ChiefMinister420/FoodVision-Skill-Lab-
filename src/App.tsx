@@ -72,41 +72,18 @@ export default function App() {
         isDownloadingZip={isDownloadingZip}
       />
 
-      {/* Quiet Studio Technical Footer */}
-      <footer className="relative z-10 border-t border-[#E8E4DC] bg-white/80 backdrop-blur-xs py-6 px-6 text-xs text-stone-500 font-mono">
+      {/* Quiet Studio Footer */}
+      <footer className="relative z-10 border-t border-[#E8E4DC] bg-white/80 backdrop-blur-xs py-5 px-6 text-xs text-stone-500 font-mono">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-stone-700">
             <span className="w-2 h-2 rounded-full bg-stone-900"></span>
-            <span className="text-stone-900 font-semibold">FoodVision MS-CNN</span>
+            <span className="font-semibold text-stone-900">FoodVision</span>
             <span aria-hidden="true" className="text-stone-300">·</span>
-            <span>PyTorch 2.2+</span>
-            <span aria-hidden="true" className="text-stone-300">·</span>
-            <span>FastAPI Microservice</span>
-            <span aria-hidden="true" className="text-stone-300">·</span>
-            <span>Docker Containerized</span>
+            <span>Food Attribute Classification & Visual Feature Intelligence</span>
           </div>
 
-          <div className="flex items-center gap-4 text-stone-600">
-            <button
-              onClick={() => handleOpenDeveloperHub('ibm-benchmarks')}
-              className="hover:text-stone-900 transition-colors cursor-pointer"
-            >
-              IBM Food-101 Benchmark
-            </button>
-            <span aria-hidden="true" className="text-stone-300">·</span>
-            <button
-              onClick={() => handleOpenDeveloperHub('architecture')}
-              className="hover:text-stone-900 transition-colors cursor-pointer"
-            >
-              MS-CNN Mechanics
-            </button>
-            <span aria-hidden="true" className="text-stone-300">·</span>
-            <button
-              onClick={() => handleOpenDeveloperHub('repo-docker')}
-              className="hover:text-stone-900 transition-colors cursor-pointer font-semibold text-stone-900"
-            >
-              GitHub & Docker
-            </button>
+          <div className="text-stone-500">
+            Studio Photography & Visual Computing Environment
           </div>
         </div>
       </footer>

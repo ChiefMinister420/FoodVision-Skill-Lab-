@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import { db } from './src/server/db.ts';
 
 dotenv.config();
 
@@ -33,8 +34,90 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    database: 'connected',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Database API: Classification history records
+app.get('/api/history', (_req: Request, res: Response) => {
+  try {
+    const history = db.getHistory();
+    res.json(history);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to retrieve history records', details: err.message });
+  }
+});
+
+app.post('/api/history', (req: Request, res: Response) => {
+  try {
+    const { dishName, cuisine, timestamp, crispiness, umami, bakedOrFried, vegetarian, proteinDensity, topAttribute, confidenceThreshold } = req.body;
+    if (!dishName) {
+      return res.status(400).json({ error: 'dishName is required' });
+    }
+    const record = db.addHistoryRecord({
+      dishName,
+      cuisine: cuisine || 'General Culinary',
+      timestamp: timestamp || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      crispiness: crispiness ?? 80,
+      umami: umami ?? 85,
+      bakedOrFried: bakedOrFried ?? 90,
+      vegetarian: vegetarian ?? 50,
+      proteinDensity: proteinDensity ?? 70,
+      topAttribute: topAttribute || 'Fine Textured',
+      confidenceThreshold: confidenceThreshold ?? 0.50,
+    });
+    res.status(201).json(record);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to save record to database', details: err.message });
+  }
+});
+
+app.delete('/api/history', (_req: Request, res: Response) => {
+  try {
+    db.clearHistory();
+    res.json({ message: 'History database cleared successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to clear database', details: err.message });
+  }
+});
+
+// Database API: Engine metrics and database status
+app.get('/api/database/stats', (_req: Request, res: Response) => {
+  try {
+    const stats = db.getStats();
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to retrieve database stats', details: err.message });
+  }
+});
+
+// Database API: Custom uploaded food dishes
+app.get('/api/dishes', (_req: Request, res: Response) => {
+  try {
+    const dishes = db.getCustomDishes();
+    res.json(dishes);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to retrieve custom dishes', details: err.message });
+  }
+});
+
+app.post('/api/dishes', (req: Request, res: Response) => {
+  try {
+    const { name, cuisine, imageUrl, description } = req.body;
+    if (!name || !imageUrl) {
+      return res.status(400).json({ error: 'Name and imageUrl are required' });
+    }
+    const newDish = db.addCustomDish({
+      name,
+      cuisine: cuisine || 'Uploaded Dish',
+      imageUrl,
+      description: description || 'Custom food sample stored in database',
+    });
+    res.status(201).json(newDish);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to save custom dish to database', details: err.message });
+  }
 });
 
 // Endpoint: Multi-scale food attribute analysis

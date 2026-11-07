@@ -8,6 +8,7 @@ interface ReportModalProps {
   onClose: () => void;
   currentDish: FoodDishSample;
   sessionHistory: SessionHistoryItem[];
+  confidenceThreshold?: number;
 }
 
 export const ReportModal: React.FC<ReportModalProps> = ({
@@ -15,6 +16,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   onClose,
   currentDish,
   sessionHistory,
+  confidenceThreshold = 0.50,
 }) => {
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
@@ -51,6 +53,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       generatedAt: now.toISOString(),
       sessionSummary: {
         totalDishesClassified: totalAnalyzed,
+        appliedConfidenceThreshold: `${Math.round(confidenceThreshold * 100)}%`,
         averageCrispinessIndex: `${avgCrisp}%`,
         averageUmamiProfile: `${avgUmami}%`,
         averageCookingStateConfidence: `${avgCook}%`,
@@ -296,21 +299,28 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                       { dim: 'Cuisine Tradition', item: currentDish.attributes.cuisine[0] },
                       { dim: 'Flavor Profile', item: currentDish.attributes.flavor[0] },
                       { dim: 'Nutritional Density', item: currentDish.attributes.nutrition[0] },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-stone-50">
-                        <td className="py-2.5 px-3 text-stone-600">{row.dim}</td>
-                        <td className="py-2.5 px-3 font-semibold text-stone-900">{row.item?.name}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-stone-900 tabular-nums">
-                          {Math.round((row.item?.confidence || 0) * 100)}%
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-stone-500 tabular-nums">0.50</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-stone-900 text-white">
-                            POSITIVE
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    ].map((row, i) => {
+                      const isRowPositive = (row.item?.confidence || 0) >= confidenceThreshold;
+                      return (
+                        <tr key={i} className="hover:bg-stone-50">
+                          <td className="py-2.5 px-3 text-stone-600">{row.dim}</td>
+                          <td className="py-2.5 px-3 font-semibold text-stone-900">{row.item?.name}</td>
+                          <td className="py-2.5 px-3 text-right font-bold text-stone-900 tabular-nums">
+                            {Math.round((row.item?.confidence || 0) * 100)}%
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-stone-500 tabular-nums">
+                            {Math.round(confidenceThreshold * 100)}%
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isRowPositive ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-600'
+                            }`}>
+                              {isRowPositive ? 'POSITIVE' : 'IDLE'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

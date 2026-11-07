@@ -1,26 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FoodDishSample } from '../types/food';
 import { sampleDishes } from '../data/sampleDishes';
 import { FeatureMapCanvas } from './FeatureMapCanvas';
 import { RadarChart } from './RadarChart';
 import { AttributeTrendPanel, SessionHistoryItem } from './AttributeTrendPanel';
 import { ReportModal } from './ReportModal';
-import { Upload, Sparkles, CheckCircle2, Layers, SlidersHorizontal, ChevronRight, FileDown } from 'lucide-react';
+import { Upload, Sparkles, CheckCircle2, Layers, FileDown, Sliders, Database } from 'lucide-react';
 
 interface InferenceLabProps {
   onOpenDeveloperHub: (tab?: 'architecture' | 'ibm-benchmarks' | 'repo-docker') => void;
 }
 
-export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }) => {
+export const InferenceLab: React.FC<InferenceLabProps> = () => {
   const [selectedDish, setSelectedDish] = useState<FoodDishSample>(sampleDishes[0]);
   const [activeScale, setActiveScale] = useState<'original' | 'micro' | 'meso' | 'macro' | 'gradcam'>('gradcam');
   const [overlayOpacity, setOverlayOpacity] = useState<number>(0.85);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.50);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'cooking' | 'texture' | 'dietary' | 'cuisine' | 'flavor'>('all');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'cooking' | 'texture' | 'dietary' | 'cuisine' | 'flavor' | 'nutrition'>('cooking');
   const [customImageUploaded, setCustomImageUploaded] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isDbSynced, setIsDbSynced] = useState<boolean>(true);
 
-  // Initial session history populated with diverse benchmark food detections
+  // Session history state linked with backend database
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([
     {
       timestamp: '10:14',
@@ -74,6 +76,36 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
     },
   ]);
 
+  // Link with backend database on mount: fetch stored classification history
+  useEffect(() => {
+    fetch('/api/history')
+      .then((res) => {
+        if (!res.ok) throw new Error('Database endpoint returned error');
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSessionHistory(data);
+          setIsDbSynced(true);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend database history sync note:', err);
+      });
+  }, []);
+
+  // Compute all attributes and dynamic positive counts based on confidence threshold
+  const allCurrentAttributes = [
+    ...selectedDish.attributes.cookingState,
+    ...selectedDish.attributes.texture,
+    ...selectedDish.attributes.dietary,
+    ...selectedDish.attributes.cuisine,
+    ...selectedDish.attributes.flavor,
+    ...selectedDish.attributes.nutrition,
+  ];
+  const activeAttributeCount = allCurrentAttributes.filter((a) => a.confidence >= confidenceThreshold).length;
+  const totalAttributeCount = allCurrentAttributes.length;
+
   const recordDishToHistory = (dish: FoodDishSample) => {
     const crisp = dish.radarSensoryVector.find((r) => r.axis === 'Crispiness')?.value || 80;
     const umamiVal = dish.radarSensoryVector.find((r) => r.axis === 'Umami')?.value || 85;
@@ -102,6 +134,30 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
     };
 
     setSessionHistory((prev) => [...prev, newEntry]);
+
+    // Persist classification to backend database
+    fetch('/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dishName: newEntry.dishName,
+        cuisine: dish.cuisine,
+        timestamp: newEntry.timestamp,
+        crispiness: newEntry.crispiness,
+        umami: newEntry.umami,
+        bakedOrFried: newEntry.bakedOrFried,
+        vegetarian: newEntry.vegetarian,
+        proteinDensity: newEntry.proteinDensity,
+        topAttribute: newEntry.topAttribute,
+        confidenceThreshold,
+      }),
+    })
+      .then((res) => {
+        if (res.ok) setIsDbSynced(true);
+      })
+      .catch((err) => {
+        console.warn('Backend database write note:', err);
+      });
   };
 
   const handleSelectDish = (dish: FoodDishSample) => {
@@ -112,6 +168,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
 
   const handleResetSession = () => {
     setSessionHistory([]);
+    fetch('/api/history', { method: 'DELETE' }).catch(() => {});
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,7 +331,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
     { title: 'Cuisine Culinary Tradition', key: 'cuisine', data: selectedDish.attributes.cuisine },
     { title: 'Flavor & Sensory Taste Spectrum', key: 'flavor', data: selectedDish.attributes.flavor },
     { title: 'Nutritional Density Profile', key: 'nutrition', data: selectedDish.attributes.nutrition },
-  ].filter((grp) => activeCategoryFilter === 'all' || activeCategoryFilter === grp.key);
+  ].filter((grp) => activeCategoryFilter === grp.key);
 
   return (
     <div className="space-y-8">
@@ -285,11 +342,6 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
 
         <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2.5 max-w-3xl">
-            <div className="text-xs font-mono uppercase tracking-widest text-stone-600 font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-stone-900"></span>
-              <span>Multi-Scale Convolutional Feature Intelligence · IBM Food Computing</span>
-            </div>
-
             {/* Times New Roman Main Title */}
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-stone-900 font-heading text-balance leading-tight">
               Food Attribute Classification & Receptive Field Studio
@@ -300,7 +352,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
             </p>
           </div>
 
-          {/* Quick Hub Access & Download Report Buttons */}
+          {/* Quick Access Action Button & Database Status */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               onClick={() => setIsReportModalOpen(true)}
@@ -309,22 +361,13 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               <FileDown className="w-4 h-4 text-amber-300" />
               <span>Download Report</span>
             </button>
-
-            <button
-              onClick={() => onOpenDeveloperHub('architecture')}
-              className="px-4 py-2.5 bg-[#F5F2EB] hover:bg-[#ECE7DE] text-stone-900 text-sm font-semibold rounded-xl border border-[#DDD7CD] transition-all flex items-center gap-2 cursor-pointer shadow-xs"
-            >
-              <SlidersHorizontal className="w-4 h-4 text-stone-800" />
-              <span>Architecture & Code Hub</span>
-              <ChevronRight className="w-4 h-4 text-stone-500" />
-            </button>
           </div>
         </div>
       </div>
 
       {/* Culinary Benchmark Discs Strip */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-sm text-stone-700">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-stone-700">
           <span className="font-heading uppercase tracking-wider text-base font-bold text-stone-900">
             Select Culinary Benchmark Dish:
           </span>
@@ -380,7 +423,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
       </div>
 
       {/* Main Analysis Grid: Left 2D Receptive Field Map, Right Multi-Attribute Classification */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div id="receptive-field-stage" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start scroll-mt-6">
         {/* Left Column (5 Cols): Pure 2D Planar Receptive Field Map */}
         <div className="lg:col-span-5 space-y-5">
           <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 space-y-5 shadow-[0_4px_24px_rgb(0,0,0,0.03)]">
@@ -550,14 +593,11 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
           <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 sm:p-8 space-y-6 shadow-[0_4px_24px_rgb(0,0,0,0.03)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-stone-900 font-heading flex items-center gap-2.5">
-                  <span>Multi-Label Attribute Classification</span>
-                  <span className="text-xs font-mono text-stone-800 bg-[#F5F2EB] px-2.5 py-1 rounded-md border border-[#E0D8CC] font-bold">
-                    6 Orthogonal Axes
-                  </span>
+                <h3 className="text-xl sm:text-2xl font-bold text-stone-900 font-heading">
+                  Multi-Label Attribute Classification
                 </h3>
                 <div className="text-xs sm:text-sm text-stone-600 mt-1">
-                  Threshold: <strong className="text-stone-900 font-mono font-bold">0.50</strong> · Decision rule: Sigmoid multi-hot activations
+                  Threshold (Tau): <strong className="text-stone-900 font-mono font-bold">{Math.round(confidenceThreshold * 100)}%</strong> · Decision rule: P(attribute | receptive fields) &ge; Tau
                 </div>
               </div>
 
@@ -582,18 +622,91 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
               </div>
             </div>
 
-            {/* Segmented Category Filter Bar */}
+            {/* Dynamic Confidence Threshold Range Slider Control Card */}
+            <div className="p-4 sm:p-5 rounded-xl bg-[#FAF8F5] border border-[#E8E4DC] space-y-3.5 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E8E4DC] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-white border border-[#E0D8CC] flex items-center justify-center text-stone-800 shadow-2xs">
+                    <Sliders className="w-4 h-4 text-stone-900" />
+                  </div>
+                  <div>
+                    <div className="font-heading font-bold text-sm sm:text-base text-stone-900 flex items-center gap-2">
+                      <span>Classification Confidence Threshold</span>
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-white border border-[#E0D8CC] text-stone-700">
+                        &tau; = {(confidenceThreshold).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-stone-600">
+                      Dynamically filter attributes based on the multi-scale network's certainty level
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="text-xl sm:text-2xl font-bold text-stone-900 tabular-nums">
+                    {Math.round(confidenceThreshold * 100)}%
+                  </span>
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-white border border-[#E0D8CC] text-stone-800 font-bold whitespace-nowrap shadow-2xs">
+                    {activeAttributeCount} / {totalAttributeCount} Active
+                  </span>
+                </div>
+              </div>
+
+              {/* Range Slider Track */}
+              <div className="space-y-1.5">
+                <input
+                  type="range"
+                  min="0.05"
+                  max="0.95"
+                  step="0.01"
+                  value={confidenceThreshold}
+                  onChange={(e) => setConfidenceThreshold(parseFloat(e.target.value))}
+                  className="w-full accent-stone-900 h-2.5 bg-[#E5E0D8] rounded-lg cursor-pointer"
+                />
+
+                <div className="flex items-center justify-between text-[11px] font-mono text-stone-500">
+                  <span>5% (High Recall)</span>
+                  <span>35%</span>
+                  <span className="text-stone-700 font-semibold">50% (Standard)</span>
+                  <span>70%</span>
+                  <span>95% (High Certainty)</span>
+                </div>
+              </div>
+
+              {/* Quick Presets & Regime Note */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="text-stone-500 mr-1 text-[11px] uppercase tracking-wider font-semibold">Presets:</span>
+                  {[
+                    { label: '35% Lenient', val: 0.35 },
+                    { label: '50% Balanced', val: 0.50 },
+                    { label: '70% Strict', val: 0.70 },
+                    { label: '85% Certainty', val: 0.85 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => setConfidenceThreshold(preset.val)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                        Math.abs(confidenceThreshold - preset.val) < 0.01
+                          ? 'bg-stone-900 text-white shadow-xs'
+                          : 'bg-white text-stone-700 hover:text-stone-900 hover:bg-[#F2ECE1] border border-[#E0D8CC]'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-xs text-stone-600 font-mono italic">
+                  {confidenceThreshold < 0.40 && 'High Recall: Surfaces subtle & secondary sensory cues.'}
+                  {confidenceThreshold >= 0.40 && confidenceThreshold <= 0.65 && 'Balanced: Optimal F1-score calibrated on IBM Food taxonomy.'}
+                  {confidenceThreshold > 0.65 && 'High Precision: Only attributes with strong feature activation confirm.'}
+                </div>
+              </div>
+            </div>
+
+            {/* Segmented Category Filter Bar (without "All 6 Axes" button) */}
             <div className="flex items-center gap-1.5 p-1.5 bg-[#F5F2EB] rounded-xl border border-[#E8E4DC] overflow-x-auto text-xs sm:text-sm font-mono">
-              <button
-                onClick={() => setActiveCategoryFilter('all')}
-                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                  activeCategoryFilter === 'all'
-                    ? 'bg-white text-stone-900 shadow-xs font-bold'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                All 6 Axes
-              </button>
               <button
                 onClick={() => setActiveCategoryFilter('cooking')}
                 className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
@@ -602,7 +715,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Cooking
+                Cooking Method
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('texture')}
@@ -612,7 +725,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Texture
+                Texture Profile
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('dietary')}
@@ -622,7 +735,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Dietary
+                Dietary Boundaries
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('cuisine')}
@@ -632,7 +745,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Cuisine
+                Cuisine Tradition
               </button>
               <button
                 onClick={() => setActiveCategoryFilter('flavor')}
@@ -642,7 +755,17 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                Flavor
+                Flavor Spectrum
+              </button>
+              <button
+                onClick={() => setActiveCategoryFilter('nutrition')}
+                className={`px-3.5 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                  activeCategoryFilter === 'nutrition'
+                    ? 'bg-white text-stone-900 shadow-xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                Nutritional Density
               </button>
             </div>
 
@@ -665,7 +788,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                   <div className="space-y-3">
                     {group.data.map((item, idx) => {
                       const pct = Math.round(item.confidence * 100);
-                      const isPositive = item.confidence >= (item.threshold || 0.5);
+                      const isPositive = item.confidence >= confidenceThreshold;
 
                       return (
                         <div key={idx} className="space-y-1.5">
@@ -687,7 +810,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                               <span className={isPositive ? 'text-stone-950 font-bold' : 'text-stone-500'}>
                                 {pct}%
                               </span>
-                              <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold ${
+                              <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold transition-colors ${
                                 isPositive
                                   ? 'bg-stone-900 text-white'
                                   : 'bg-[#ECE7DE] text-stone-600'
@@ -697,20 +820,21 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                             </div>
                           </div>
 
-                          {/* Confidence Bar */}
+                          {/* Confidence Bar with Dynamic Threshold Marker */}
                           <div className="relative w-full h-2.5 bg-[#EBE5DB] rounded-full overflow-hidden shadow-inner">
                             <div
                               style={{ width: `${pct}%` }}
-                              className={`h-full rounded-full transition-all duration-500 ${
+                              className={`h-full rounded-full transition-all duration-300 ${
                                 isPositive
                                   ? 'bg-gradient-to-r from-stone-800 via-stone-900 to-stone-950 shadow-[0_0_8px_rgba(0,0,0,0.25)]'
                                   : 'bg-stone-400/80'
                               }`}
                             />
-                            {/* 50% Threshold marker */}
+                            {/* Dynamic Threshold marker */}
                             <div
-                              className="absolute top-0 bottom-0 w-0.5 bg-stone-500/60"
-                              style={{ left: '50%' }}
+                              className="absolute top-0 bottom-0 w-0.5 bg-stone-950/80 z-10 transition-all duration-150"
+                              style={{ left: `${Math.round(confidenceThreshold * 100)}%` }}
+                              title={`Active Threshold: ${Math.round(confidenceThreshold * 100)}%`}
                             />
                           </div>
                         </div>
@@ -720,8 +844,6 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
                 </div>
               ))}
             </div>
-
-            {/* Note: The "Looking for the full PyTorch training loop or Dockerfile?" banner was completely removed per user request */}
           </div>
         </div>
       </div>
@@ -738,6 +860,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = ({ onOpenDeveloperHub }
         onClose={() => setIsReportModalOpen(false)}
         currentDish={selectedDish}
         sessionHistory={sessionHistory}
+        confidenceThreshold={confidenceThreshold}
       />
     </div>
   );

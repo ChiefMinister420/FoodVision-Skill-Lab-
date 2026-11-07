@@ -42,25 +42,16 @@ export const Header: React.FC<HeaderProps> = ({
         </span>
       </nav>
 
-      {/* Zone 3: Settings/Developer Hub button & Download Zip */}
+      {/* Zone 3: Settings/Developer Hub button */}
       <div className="flex items-center gap-2.5 shrink-0">
-        {/* The requested button to hide Architecture, Repository, Docker under settings/hub */}
+        {/* The button to access Architecture, Repository, and Docker inside the hub */}
         <button
           onClick={() => onOpenDeveloperHub('architecture')}
-          className="px-3 py-1.5 text-xs font-medium text-stone-700 bg-[#F5F2EB] hover:bg-[#EFECE6] border border-[#E0D8CC] rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
-          title="Open Architecture, IBM Benchmarks, and Repository Files"
+          className="px-3.5 py-1.5 text-xs font-medium text-stone-700 bg-[#F5F2EB] hover:bg-[#EFECE6] border border-[#E0D8CC] rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+          title="Open Developer & System Hub (Architecture, Benchmarks, and Repository Files)"
         >
           <SlidersHorizontal className="w-3.5 h-3.5 text-stone-600" />
           <span>Developer & System Hub</span>
-        </button>
-
-        <button
-          onClick={onDownloadZip}
-          disabled={isDownloadingZip}
-          className="px-3.5 py-1.5 text-xs font-medium text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50 shadow-2xs"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>{isDownloadingZip ? 'Archiving...' : 'Download Code (.zip)'}</span>
         </button>
       </div>
     </header>
