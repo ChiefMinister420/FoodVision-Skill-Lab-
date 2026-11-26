@@ -444,7 +444,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
             <div className="grid grid-cols-5 gap-1.5 p-1.5 bg-[#F5F2EB] rounded-xl border border-[#E8E4DC] text-xs font-mono">
               <button
                 onClick={() => setActiveScale('original')}
-                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-[11px] font-['Times_New_Roman',Times,serif] ${
                   activeScale === 'original'
                     ? 'bg-white text-stone-900 font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
@@ -454,7 +454,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
               </button>
               <button
                 onClick={() => setActiveScale('micro')}
-                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-[11px] font-['Times_New_Roman',Times,serif] ${
                   activeScale === 'micro'
                     ? 'bg-stone-900 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
@@ -464,7 +464,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
               </button>
               <button
                 onClick={() => setActiveScale('meso')}
-                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-[11px] font-['Times_New_Roman',Times,serif] ${
                   activeScale === 'meso'
                     ? 'bg-amber-600 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
@@ -474,7 +474,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
               </button>
               <button
                 onClick={() => setActiveScale('macro')}
-                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-[10px] ${
                   activeScale === 'macro'
                     ? 'bg-purple-700 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
@@ -484,7 +484,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
               </button>
               <button
                 onClick={() => setActiveScale('gradcam')}
-                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-xs sm:text-sm ${
+                className={`py-2 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center text-[11px] font-['Times_New_Roman',Times,serif] ${
                   activeScale === 'gradcam'
                     ? 'bg-rose-600 text-white font-bold shadow-xs'
                     : 'text-stone-600 hover:text-stone-900'
@@ -636,7 +636,7 @@ export const InferenceLab: React.FC<InferenceLabProps> = () => {
                         &tau; = {(confidenceThreshold).toFixed(2)}
                       </span>
                     </div>
-                    <div className="text-xs text-stone-600">
+                    <div className="font-['Times_New_Roman',Times,serif] text-[11px] text-stone-600">
                       Dynamically filter attributes based on the multi-scale network's certainty level
                     </div>
                   </div>
